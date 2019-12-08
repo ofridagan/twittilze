@@ -1,3 +1,6 @@
+// Configuration
+const { topListSize } = require('./configuration');
+
 // for making http request and stream the response
 const hyperquest = require('hyperquest');
 
@@ -32,9 +35,9 @@ const statsMiddleware = (streamUrl) => {
   const tweets =  hyperquest(streamUrl).pipe(ndjson.parse());
 
   // stream of tweets ==> stream from tweets to values ==> stream from values to 'top' list
-  const topWords = tweets.pipe(makeValuesStream(getWords)).pipe(topper(10));
-  const topUsers = tweets.pipe(makeValuesStream(getUsers)).pipe(topper(10));
-  const topHashtags = tweets.pipe(makeValuesStream(getHashtags)).pipe(topper(10));
+  const topWords = tweets.pipe(makeValuesStream(getWords)).pipe(topper(topListSize));
+  const topUsers = tweets.pipe(makeValuesStream(getUsers)).pipe(topper(topListSize));
+  const topHashtags = tweets.pipe(makeValuesStream(getHashtags)).pipe(topper(topListSize));
   const tweetsCount = tweets.pipe(makeValuesStream(getTweetsCount)).pipe(topper(1)); // yeah I don't really need a topper just to count.. but it works
 
   // marking the time for tweets-frequency calculation

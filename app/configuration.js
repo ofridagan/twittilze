@@ -7,3 +7,5 @@ exports.port = process.env.PORT || 3000;
 // location of the client app dist files
 exports.publicDir = 'client/build';
 
+// TOP X
+exports.topListSize = 10;
