@@ -1,0 +1,15 @@
+.Toplist .row {
+  display: flex;
+  width: 280px;
+  justify-content: space-between;
+  padding: 8px;
+  background-color: #1c1f25;
+}
+
+.Toplist .row:nth-child(odd) {
+  background-color: #3d4750;
+}
+
+.Toplist h1 {
+  text-transform: capitalize;
+}
