@@ -1,67 +1,44 @@
+// for making http request and stream the response
 const hyperquest = require('hyperquest');
+
+// json stream parsing
 const ndjson = require('ndjson');
-const fs = require('fs');
+
+// our topper-stream for calculation 'top' values
 const topper = require('./topperStream');
+
+// tweats parsers
+const {getWords, getUsers, getHashtags, getTweetsCount} = require('./tweatParsers');
+
 const { Transform } = require('stream');
 
-const getWords = new Transform({
-  objectMode:true,
+// creates a stream which recieves tweats and outputs string values, using the function provided
+const makeValuesStream = (tweetToValues) => {
+  return new Transform({
+    objectMode:true,
 
-  transform(tweet, encoding, callback) {
-    if (tweet.text) {
-      tweet.text.split(' ').filter((word) => /\S/.test(word)).forEach((word) => {
+    transform(tweet, encoding, callback) {
+      (tweetToValues(tweet) || []).forEach((word) => {
         this.push(word);
       });
+      callback();
     }
-    callback();
-  }
-});
-
-const getUsers = new Transform({
-  objectMode:true,
-
-  transform(tweet, encoding, callback) {
-    if (tweet.user) {
-      this.push(tweet.user.screen_name);
-    }
-    callback();
-  }
-});
-
-const getHashtags = new Transform({
-  objectMode:true,
-
-  transform(tweet, encoding, callback) {
-    if (tweet.entities && tweet.entities.hashtags) {
-      tweet.entities.hashtags.map((tag) => tag.text).forEach((word) => {
-        this.push(word);
-      });
-    }
-    callback();
-  }
-});
-
-const getTweetsCount = new Transform({
-  objectMode:true,
-
-  transform(tweet, encoding, callback) {
-    this.push('someConstantValue');
-    callback();
-  }
-});
+  });
+};
 
 const statsMiddleware = (streamUrl) => {
+
+  // a stream of tweats coming from the web and parsed before passing on to the next stream
+  const tweets =  hyperquest(streamUrl).pipe(ndjson.parse());
+
+  // stream of tweats ==> stream from tweats to values ==> stream from values to 'top' list
+  const topWords = tweets.pipe(makeValuesStream(getWords)).pipe(topper(10));
+  const topUsers = tweets.pipe(makeValuesStream(getUsers)).pipe(topper(10));
+  const topHashtags = tweets.pipe(makeValuesStream(getHashtags)).pipe(topper(10));
+  const tweetsCount = tweets.pipe(makeValuesStream(getTweetsCount)).pipe(topper(1)); // yeah I don't really need a topper just to count.. but it works
+
+  // marking the time for tweats-frequency calculation
   const start = new Date();
-
-  const stream = hyperquest(streamUrl);
-  //const stream = fs.createReadStream('./stream.json');
-
-  const tweets = stream.pipe(ndjson.parse());
-  const topWords = tweets.pipe(getWords).pipe(topper(10));
-  const topUsers = tweets.pipe(getUsers).pipe(topper(10));
-  const topHashtags = tweets.pipe(getHashtags).pipe(topper(10));
-  const tweetsCount = tweets.pipe(getTweetsCount).pipe(topper(1));
-
   const tweetsFrequency = () => 1000 * tweetsCount.getTop()[0].count / (new Date() - start);
 
   return (ctx, next) => {
